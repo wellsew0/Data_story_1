@@ -1,0 +1,341 @@
+---
+title: "Who Drives Emissions? <br>Inequality and Progress in the Renewable Transition"
+output: html_document
+author: "Elizabeth Wells"
+date: "`r Sys.Date()`"
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo=FALSE,
+  message=FALSE,
+  warning=FALSE
+)
+library(plotly)
+library(tidyverse)
+library(scales)
+library(patchwork)
+library(kableExtra)
+```
+
+Climate change is fundamentally an energy story. Carbon dioxide emissions are closely tied to how societies produce and consume energy, and the global energy system remains heavily dependent on fossil fuels. At the same time, countries differ dramatically in how much they emit, how much energy they consume, and how quickly they are transitioning to renewable sources.
+This data story examines global carbon emissions and the renewable energy transition through the lens of inequality and responsibility. It explores three central questions: How have global energy use and emissions evolved over time? Which countries contribute most to total and per-capita emissions? And how does renewable energy adoption vary among major emitters?
+These questions are central to *Sustainable Development Goal 13* (Climate Action) and intersect with *Sustainable Development Goal 10* (Reduced Inequalities). Addressing climate change requires not only reducing emissions overall, but understanding who emits, who benefits from energy consumption, and who is transitioning most rapidly toward cleaner systems.
+
+# Table of Contents
+[Rising Energy, Rising Emissions](#rising-energy-rising-emissions)
+
+[Who Drives Global Emissions?](#who-drives-global-emissions)
+
+[Responsibility Beyond Total Emissions](#responsibility-beyond-total-emissions)
+
+[A 2023 Snapshot of Carbon Responsibility](#a-2023-snapshot-of-carbon-responsibility)
+
+[Are Major Emitters Transitioning?](#are-major-emitters-transitioning)
+
+[Takeaways](#takeaways)
+
+[Data Sources](#data-sources)
+
+# Rising Energy, Rising Emissions
+Over the last six decades, global energy consumption has risen steadily, reflecting economic growth, industrialization, and rising living standards across much of the world. At the same time, global carbon dioxide emissions have followed a similar upward trajectory. While efficiency improvements and renewable technologies have expanded, the overall scale of energy demand has continued to grow. This persistent increase in energy use makes deep decarbonization more complex: emissions reductions must outpace not only fossil fuel dependence, but also expanding global demand.
+
+
+```{r plot4, echo=FALSE, message=FALSE, warning=FALSE}
+library(patchwork)
+
+owid_co2 <- read_csv("../../data/owid-co2.csv")
+countries <- c("United States", 
+"India",
+"China",
+"Germany",
+"Russia",
+"Brazil")
+
+
+world_ts <- owid_co2 %>%
+  filter(country == "World", year >= 1960) %>%
+  select(year, co2, primary_energy_consumption) %>%
+  filter(!is.na(co2), !is.na(primary_energy_consumption))
+
+p4a <- ggplot(world_ts, 
+              aes(
+                x = year,
+                y = co2)) +
+  geom_line(linewidth = 1) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Global Energy Use and CO2 Emissions",
+    subtitle = "Energy demand has grown steadily, making ambitious emission cuts difficult to achieve.",
+    x = NULL,
+    y = "CO2 emissions (million tonnes)",
+    caption = "Source: Global Carbon Project via Our World in Data"
+  ) + 
+  theme_minimal() +
+  theme(
+    axis.title.y = element_text(size = 10))
+  
+
+p4b <- ggplot (world_ts, 
+               aes(
+                 x = year,
+                 y = primary_energy_consumption)) +
+  geom_line(linewidth = 1) + 
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    x = "Year",
+    y = "Primary energy consumption (TWh)") +
+  theme_minimal() +
+  theme(
+    axis.title.y = element_text(size = 10))
+
+p4a/p4b
+
+
+
+```
+
+# Who Drives Global Emissions?
+While global emissions have risen steadily, they are not distributed evenly across countries. A small number of major economies account for a substantial share of total carbon dioxide emissions. The historical trajectories of these countries reveal shifting patterns of dominance, with long-standing industrial powers joined by rapidly developing economies. Understanding how these national contributions have evolved is critical for assessing fairness, climate negotiations, and the pace of carbon reduction.
+
+
+```{r emissions_plot, echo=FALSE}
+owid_co2 <- read_csv("../../data/owid-co2.csv")
+countries <- c("United States", 
+"India",
+"China",
+"Germany",
+"Russia",
+"Brazil")
+
+co2_filtered <- owid_co2 %>%
+filter(year >= 1960,
+country %in% c(countries, "World"), 
+!is.na(co2)) %>%
+select(country, year, co2)
+
+world_data <- co2_filtered %>%
+filter(country == "World")
+
+country_data <- co2_filtered %>% 
+filter(country != "World")
+
+ordered_countries <- country_data %>%
+  group_by(country) %>%
+  summarise(total = sum(co2, na.rm = TRUE))%>%
+  arrange(total) %>%
+  pull(country)
+
+country_data <- country_data %>%
+  mutate(country = factor(country, levels = ordered_countries))
+
+country_data_stacked <- country_data %>%
+  arrange(year, desc(country)) %>%
+  group_by(year) %>%
+  mutate(
+    stacked_top = cumsum(co2),
+    stacked_mid = stacked_top - co2 /2) %>%
+  ungroup()
+
+p <- ggplot() +
+geom_area( 
+data = country_data, 
+aes(x = year, 
+y = co2,
+fill = country,
+group = country),
+alpha = 0.8
+) +
+geom_point(
+  data = country_data_stacked,
+  aes(
+    x = year,
+    y = stacked_mid,
+    group = country,
+    text = paste0(
+      "Country: ", country,
+      "<br>Year: ", year,
+      "<br>CO2: ", scales::comma(co2), " million tonnes"
+    )
+  ),
+  alpha = 0,
+  size = 2
+) +
+geom_line(
+data = world_data,
+aes(x = year,
+y = co2),
+color = "black",
+linewidth = 1.0) +
+geom_line(
+data = world_data,
+aes(x = year,
+y = co2,
+text = paste0(
+  "Country: ", country,
+  "<br>Year: ", year,
+  "<br>CO2: ", scales::comma(co2), " million tonnes")),
+color = "black",
+linewidth = 1.3
+) +
+scale_y_continuous(labels = comma) +
+labs(
+title = "Historical CO2 Emissions (1960-Present)",
+subtitle = "Stacked emissions from selected countries, with global total (World) overlaid",
+x = "Year",
+y = "CO2 emissions (million tonnes)",
+fill = "Country",
+caption = "Source: Global Carbon Project via Our World in Data") +
+  theme_minimal()
+
+ggplotly(p, tooltip = "text")
+```
+
+# Responsibility Beyond Total Emissions
+
+Absolute emissions reveal scale, but per-capita emissions reveal inequality. Measuring carbon dioxide emissions per person provides insight into how responsibility is distributed across populations. In 2023, substantial differences remain among major emitters, underscoring the tension between total contribution and individual-level responsibility.
+
+```{r per_capita_plot}
+per_capita_data <- owid_co2 %>%
+  filter(
+    year == 2023,
+    country %in% countries, 
+    !is.na(co2_per_capita)
+  ) %>% 
+  select(country, co2_per_capita)
+per_capita_data <- per_capita_data %>%
+  arrange(co2_per_capita) %>%
+  mutate(country = factor(country, levels = country))
+p2 <- ggplot(per_capita_data,
+             aes(x = co2_per_capita, y = country)) +
+  geom_col(fill = "#2C7BB6") + 
+  labs(
+    title = "Per Capita CO2 Emissions (2023)",
+    subtitle = "Carbon emissions per person highlight inequalities in responsibility", 
+    x = "CO2 emissions per person (tonnes)",
+    y = NULL, 
+    caption = "Source: Global Carbon Project via Our World in Data"
+  ) +
+  theme_minimal()
+
+p2
+```
+
+
+# A 2023 Snapshot of Carbon Responsibility
+
+Recent data underscores the uneven nature of global carbon responsibility. Some countries dominate global emissions in absolute terms, while others emit far more per capita. Viewing total emissions, per-capita emissions, and global share side by side illustrates how responsibility can look very different depending on the metric used.
+
+```{r table, echo=FALSE, message=FALSE, warning=FALSE}
+countries_table <- c("United States", "China", "India", "Germany", "Russia", "Brazil")
+
+world_co2_2023 <- owid_co2 %>%
+  filter(country == "World", year == 2023, !is.na(co2)) %>%
+  summarise(world_total = first(co2)) %>%
+  pull(world_total)
+
+table_2023 <- owid_co2 %>%
+  filter(
+    year == 2023,
+    country %in% countries_table,
+    !is.na(co2),
+    !is.na(co2_per_capita)
+  ) %>%
+  mutate(
+    share_global_co2_pct = 100 * co2 / world_co2_2023
+  ) %>%
+  select(
+    country,
+    co2,
+    co2_per_capita,
+    share_global_co2_pct) %>%
+  mutate(
+    co2 = round(co2, 1),
+    co2_per_capita = round(co2_per_capita, 1),
+    share_global_co2_pct = round(share_global_co2_pct, 2)
+  ) %>%
+  arrange(desc(co2)) %>%
+  rename(
+    Country = country,
+    `CO2 (million tonnes)` = co2,
+    `CO2 per capita (tonnes)` = co2_per_capita,
+    `Share of global CO2 (%)` = share_global_co2_pct,
+    
+  )
+
+knitr::kable(
+  table_2023,
+  caption = "2023 snapshot of emissions responsibility (per capita), scale (total and share of global), and economic capacity (GDP per capita). Source: Global Carbon Project via Our World in Data."
+) %>%
+  kable_styling(full_width = FALSE)
+
+
+```
+
+# Are Major Emitters Transitioning?
+If climate responsibility is uneven, so too is energy transition. Among major emitters, renewable electricity adoption differs dramatically, revealing gaps between emissions scale and decarbonization progress. The transition to clean energy is not occuring uniformly, raising important questions about equity, capacity, and political will in the global effort to address climate change.
+
+```{r plot3}
+irena <- read_csv("../../data/IRENA_data.csv", skip = 1, show_col_types=FALSE)
+
+
+irena <- irena %>% 
+  mutate(
+    `Country/area` = case_when(
+      `Country/area` == "United States of America (the)" ~ "United States",
+      `Country/area` == "Russian Federation (the)" ~ "Russia",
+      TRUE ~ `Country/area`
+    )
+  )
+
+irena_totals_2023 <- irena %>%
+  filter(
+    `Year` == 2023,
+    `Country/area` %in% countries,
+    `Technology` %in% c("Total renewable", "Total non-renewable"),
+    `Data Type` == "Electricity Generation (GWh)",
+    `Grid connection` == "On-grid"
+  ) %>%
+  mutate(
+    value = readr::parse_number(`Electricity statistics`),
+    source = if_else(`Technology` == "Total renewable", "Renewable", "Non-renewable")
+  ) %>%
+  select(country = `Country/area`, source, value)
+
+p3 <- ggplot(irena_totals_2023, 
+             aes(x = value,
+                 y = country,
+                 fill = source)) +
+  geom_col() +
+  labs(
+    title = "Renewable vs. Non-renewable Electricity (2023)",
+    subtitle = "Electricity generation split by energy source totals",
+    x = "Electricity generation (GWh)",
+    y = NULL,
+    fill = NULL, 
+    caption = "Source: IRENA"
+  ) +
+  theme_minimal()
+
+p3
+```
+
+
+# Takeaways
+The data reaveals three central insights about global carbon emissions and the transition to renewable energy.
+
+1. **Energy demand and carbon emissions continue to rise together.** Despite the rapid growth in renewable technologies, total global energy consumption has expanded over time, making decarbonization more complex than simply replacing fossil fuels. 
+
+2. **Responsibility for emissions is highly unequal.** A small number of countries account for a large share of global CO2 emissions. But responsibility looks different depending on the metric.
+
+3. **The renewable transition is uneven among major emitters.** Some high-emitting countries have made substantial progress integrating renewable electricity, while others remain heavily dependent on fossil fuels. 
+
+  
+# Data Sources
+
+- [International Renewable Energy Agency](https://www.irena.org/Data) (IRENA) is an intergovernmental agency. IRENA's mission is "supporting countries worldwide in their transition to a sustainable energy future."
+
+- [Our World in Data](https://ourworldindata.org/grapher/levelized-cost-of-energy) (OWID) is a project of the nonprofit organization Global Change Data Lab. OWID's mission is '"to publish research and data to make progress against the world's largest problems."'
+  
