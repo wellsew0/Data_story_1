@@ -275,7 +275,7 @@ knitr::kable(
 ```
 
 # Are Major Emitters Transitioning?
-If climate responsibility is uneven, so too is energy transition. Among major emitters, renewable electricity adoption differs dramatically, revealing gaps between emissions scale and decarbonization progress. The transition to clean energy is not occuring uniformly, raising important questions about equity, capacity, and political will in the global effort to address climate change.
+If climate responsibility is uneven, so too is energy transition. Among major emitters, renewable electricity adoption differs dramatically, revealing gaps between emissions scale and decarbonization progress. The transition to clean energy is not occurring uniformly, raising important questions about equity, capacity, and political will in the global effort to address climate change.
 
 ```{r plot3}
 irena <- read_csv("../../data/IRENA_data.csv", skip = 1, show_col_types=FALSE)
@@ -324,7 +324,7 @@ p3
 
 
 # Takeaways
-The data reaveals three central insights about global carbon emissions and the transition to renewable energy.
+The data reveals three central insights about global carbon emissions and the transition to renewable energy.
 
 1. **Energy demand and carbon emissions continue to rise together.** Despite the rapid growth in renewable technologies, total global energy consumption has expanded over time, making decarbonization more complex than simply replacing fossil fuels. 
 
